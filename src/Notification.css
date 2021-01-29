@@ -1,0 +1,15 @@
+.notification{
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  margin: 10px;
+  border-radius: 20rem;
+  width: 610px;
+}
+.notification__Body{
+  font-size: 15px;
+}
+
+.notification__Action{
+ height: 35px;
+}
