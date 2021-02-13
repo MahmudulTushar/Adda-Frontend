@@ -10,6 +10,7 @@ import NotificationsIcon from '@material-ui/icons/Notifications';
 import axios from './axios.js'
 import Pusher from './Pusher'
 import Menu from '@material-ui/core/Menu';
+import { useHistory } from "react-router-dom";
 //... Custom Components....//
 import SidebarChat from './SidebarChat'
 import Notification from './Notification'
@@ -23,6 +24,7 @@ function SideBar() {
   const [notifications, SetNotifications] = useState([]);
   const [notificationAnchorEl, setNotificationAnchorEl] =useState(null);
   const [numberOfNotification, SetNumberOfNotification] = useState(0);
+  const history = useHistory();
   useEffect(() => {
     axios.get(`/rooms/sync/${user.email}`)
     .then(response => {
@@ -98,7 +100,8 @@ function SideBar() {
     dispatch({
       type : actionTypes.SET_USER,
       user : null,
-    })
+    });
+    history.push("/");
   }
   return (
     <div className = 'sidebar'>
