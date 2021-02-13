@@ -3,12 +3,23 @@ import './App.css';
 import SideBar from './Sidebar';
 import Login from './Login';
 import Chat from './Chat';
-import Pusher from 'pusher-js'
-import axios from './axios.js'
 import {BrowserRouter as Router, Switch, Route} from "react-router-dom";
 import { useStateValue } from './StateProvider';
+import { actionTypes } from './reducer';
+import {GetLocalStorageData, LocalStorageConst} from './Utils/LocalStorageUtils'
 function App() {
   const [{user}, dispatch] = useStateValue();
+  
+  useEffect(() => {
+    const loggedInUser = GetLocalStorageData(LocalStorageConst.user);
+    if (loggedInUser) {
+      dispatch({
+        type : actionTypes.SET_USER,
+        user : loggedInUser,
+      })
+    }
+  }, []);
+
   return (
     <div className="app">
       { !user ? 

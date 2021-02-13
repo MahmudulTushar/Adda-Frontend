@@ -5,6 +5,7 @@ import whatsAppLogo from './social-whatsapp.png';
 import {auth, provider} from "./firebase" 
 import { useStateValue } from './StateProvider';
 import { actionTypes } from './reducer';
+import {SetLocalStorageData, LocalStorageConst} from './Utils/LocalStorageUtils'
 function Login() {
   const [{},dispatch] = useStateValue();
   const signIn = () =>{
@@ -14,6 +15,7 @@ function Login() {
         type : actionTypes.SET_USER,
         user : result.user,
       })
+      SetLocalStorageData(LocalStorageConst.user, result.user)
     })
     .catch((error)=>console.log("Sign In Error: ", error))
   }

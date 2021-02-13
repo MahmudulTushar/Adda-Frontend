@@ -3,17 +3,20 @@ import "./Sidebar.css";
 import DonutLargeIcon from '@material-ui/icons/DonutLarge';
 import { IconButton, Avatar } from '@material-ui/core';
 import ChatIcon from '@material-ui/icons/Chat';
-import MoreVertIcon from '@material-ui/icons/MoreVert';
+import ExitToAppIcon from '@material-ui/icons/ExitToApp';
+import Tooltip from '@material-ui/core/Tooltip';
 import SearchIcon from '@material-ui/icons/Search';
 import NotificationsIcon from '@material-ui/icons/Notifications';
 import axios from './axios.js'
 import Pusher from './Pusher'
-import MenuItem from '@material-ui/core/MenuItem';
 import Menu from '@material-ui/core/Menu';
 //... Custom Components....//
 import SidebarChat from './SidebarChat'
 import Notification from './Notification'
 import { useStateValue } from './StateProvider';
+import {RemoveLocalStorageData, LocalStorageConst} from './Utils/LocalStorageUtils'
+import { actionTypes } from './reducer';
+
 function SideBar() {
   const [{user}, dispatch] = useStateValue(); 
   const [rooms, SetRooms] = useState([]);
@@ -90,6 +93,13 @@ function SideBar() {
   const handleNotificationsClose = () => {
     setNotificationAnchorEl(null);
   };
+  const LogOut = () =>{
+    RemoveLocalStorageData(LocalStorageConst.user);
+    dispatch({
+      type : actionTypes.SET_USER,
+      user : null,
+    })
+  }
   return (
     <div className = 'sidebar'>
       <div className="sidebar__header">
@@ -123,9 +133,11 @@ function SideBar() {
           <IconButton>
             <ChatIcon/>
           </IconButton>
-          <IconButton>
-            <MoreVertIcon/>  
-          </IconButton>
+          <Tooltip title={<h2>Log Out</h2>}> 
+            <IconButton >
+              <ExitToAppIcon onClick={LogOut}/>  
+            </IconButton> 
+          </Tooltip> 
         </div>   
       </div>
       <div className = "sidebar__search">
