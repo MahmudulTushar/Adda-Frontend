@@ -17,6 +17,7 @@ import Notification from './Notification'
 import { useStateValue } from './StateProvider';
 import {RemoveLocalStorageData, LocalStorageConst} from './Utils/LocalStorageUtils'
 import { actionTypes } from './reducer';
+import Progress from './Progress'
 
 function SideBar() {
   const [{user}, dispatch] = useStateValue(); 
@@ -24,13 +25,16 @@ function SideBar() {
   const [notifications, SetNotifications] = useState([]);
   const [notificationAnchorEl, setNotificationAnchorEl] =useState(null);
   const [numberOfNotification, SetNumberOfNotification] = useState(0);
+  const [isChatRoomsLoaded, SetChatRoomLoaded] = useState(false);
   const history = useHistory();
   useEffect(() => {
     axios.get(`/rooms/sync/${user.email}`)
     .then(response => {
       SetRooms(response.data);
+      SetChatRoomLoaded(true);
     })
     .catch(err =>{
+      SetChatRoomLoaded(true);
     })
   }, [])
 
@@ -150,12 +154,19 @@ function SideBar() {
           </div>
       </div> 
       <div className="sidebar__chats">
-        <SidebarChat addNewChat/> 
-        {
-          rooms.map( room => (
-            <SidebarChat key = {room._id} id = {room._id} name = {room.name}/> 
-          ))
-        }
+      {
+        !isChatRoomsLoaded?(<Progress/>):
+        (
+          <div>
+            <SidebarChat addNewChat/> 
+            {
+              rooms.map( room => (
+                <SidebarChat key = {room._id} id = {room._id} name = {room.name}/> 
+              ))
+            }
+          </div>
+        )
+      }
       </div>      
     </div>
   )
