@@ -24,6 +24,7 @@ function Chat() {
   const [openDialogForSendJoinReq, setOpenialogForSendJoinReq] = useState(false);
   const [email, setEmail] = useState("");
   const [seed, setSeed] = useState("");
+  const [isValidChatRoom, setValidChatRoom] = useState(false);
   const pattern = new RegExp(/^(("[\w-\s]+")|([\w-]+(?:\.[\w-]+)*)|("[\w-\s]+")([\w-]+(?:\.[\w-]+)*))(@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-z]{2,6}(?:\.[a-z]{2})?)$)|(@\[?((25[0-5]\.|2[0-4][0-9]\.|1[0-9]{2}\.|[0-9]{1,2}\.))((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[0-9]{1,2})\.){2}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[0-9]{1,2})\]?$)/i);
   let emailIsValid = true;
   useEffect(() => {
@@ -100,7 +101,8 @@ function Chat() {
 
   useEffect(()=>{
     // To set the Chat body at the current bottom
-    chatBody.current.scrollTop = chatBody.current.scrollHeight;
+    if (isValidChatRoom)
+      chatBody.current.scrollTop = chatBody.current.scrollHeight;
     
     const channel = Pusher.subscribe('messages');
     channel.bind('insert', function(newMessage) {
@@ -115,7 +117,7 @@ function Chat() {
       channel.unbind_all();
       channel.unsubscribe();
     }
-  },[messages, roomId])
+  },[messages, roomId, isValidChatRoom, user.email])
 
   const sendMessage =  (e) =>{
     e.preventDefault();
@@ -139,73 +141,100 @@ function Chat() {
   useEffect(() => {
     if (roomId)
     {
+      let userArray = [];
       axios.get(`/rooms/${roomId}`)
       .then(response => {
+        
         setRoomName(response.data.name);
+        
+        if (response.data)
+        {
+           if (response.data.roomOwner)
+           {
+             userArray.push(response.data.roomOwner);
+           }
+           if (response.data.friends)
+           {
+             userArray.push(...response.data.friends);
+           }
+        }
+
+        if (userArray.indexOf(user.email) > -1)
+          setValidChatRoom(true);
+        else
+          setValidChatRoom(false);
+        
       })
       .catch(err =>{
+        setValidChatRoom(false);
       })
     }  
-  }, [roomId])
-  return (
-    <div className = 'chat'>
-      <div className="chat__header">
-        <Avatar src={`https://avatars.dicebear.com/api/human/${seed}.svg`}/>
-        <div className="chat__headerInfo"> 
-          <h3>{roomName}</h3>
-          {messages.length > 0 && (<p>Last seen at ...
-            {new Date(messages[messages.length - 1]?.timeStamp)?.toLocaleString()}
-          </p>)
-          }
+  }, [roomId, user.email])
+  
+  if (isValidChatRoom)
+  {
+    return (
+      <div className = 'chat'>
+        <div className="chat__header">
+          <Avatar src={`https://avatars.dicebear.com/api/human/${seed}.svg`}/>
+          <div className="chat__headerInfo"> 
+            <h3>{roomName}</h3>
+            {messages.length > 0 && (<p>Last seen at ...
+              {new Date(messages[messages.length - 1]?.timeStamp)?.toLocaleString()}
+            </p>)
+            }
+          </div>
+          <div className="chat__headerRight">
+            <Tooltip title={<h2>Send join request</h2>}> 
+              <IconButton disabled = {roomId === undefined}>
+                <AddIcon  onClick={handleClickOpenDialogForSendJoinReq}/>  
+              </IconButton> 
+            </Tooltip> 
+            <CustomDialog openDialog ={openDialogForSendJoinReq}
+                          handleCloseOpenDialog = {handleCloseOpenDialogForSendJoinReq}
+                          dialogTitle = {`Join Request In '${roomName}'`}
+                          dialogContentText = {'To send join request to other, please enter email address(Gmail) here'}
+                          textFieldLabel = {'Email Address'}
+                          textFieldType = {'email'}
+                          setData = {setEmail}
+                          handleSubmitButton = {handleSendJoinReq}
+                          cancelButtonText = {'Cancel'}
+                          submitButtonText = {'Send'}/> 
+            <IconButton>
+              <SearchOutlined/>  
+            </IconButton>
+            <IconButton>
+              <AttachFile/>
+            </IconButton>
+            <IconButton>
+              <MoreVert/>  
+            </IconButton>
+          </div>
         </div>
-        <div className="chat__headerRight">
-          <Tooltip title={<h2>Send join request</h2>}> 
-            <IconButton disabled = {roomId === undefined}>
-              <AddIcon  onClick={handleClickOpenDialogForSendJoinReq}/>  
-            </IconButton> 
-          </Tooltip> 
-          <CustomDialog openDialog ={openDialogForSendJoinReq}
-                        handleCloseOpenDialog = {handleCloseOpenDialogForSendJoinReq}
-                        dialogTitle = {`Join Request In '${roomName}'`}
-                        dialogContentText = {'To send join request to other, please enter email address(Gmail) here'}
-                        textFieldLabel = {'Email Address'}
-                        textFieldType = {'email'}
-                        setData = {setEmail}
-                        handleSubmitButton = {handleSendJoinReq}
-                        cancelButtonText = {'Cancel'}
-                        submitButtonText = {'Send'}/> 
-          <IconButton>
-            <SearchOutlined/>  
-          </IconButton>
-          <IconButton>
-            <AttachFile/>
-          </IconButton>
-          <IconButton>
-            <MoreVert/>  
-          </IconButton>
+        <div className="chat__body" ref = {chatBody}>
+          {messages.map(message => (
+            <p className = {`chat__message ${message.senderEmail===user.email && "chat__receiver"}`}>
+            {message.senderEmail !== user.email && ( <span className = "chat__name"> {message.name}</span>)}
+                {message.message} 
+              <span className = "chat__timestamp">{new Date(message.timeStamp).toLocaleString()}</span>
+            </p>
+          ))}
+        </div>
+        <div className="chat__footer">
+          <InsertEmoticon/>
+          <form>
+            <input value = {input} onChange = {e => setInput(e.target.value)} placeholder = "Type a message" type = "text"/>
+            <button onClick = {sendMessage} type = "submit">
+              Send a message
+            </button>  
+          </form>  
+          <MicIcon/>
         </div>
       </div>
-      <div className="chat__body" ref = {chatBody}>
-        {messages.map(message => (
-          <p className = {`chat__message ${message.senderEmail===user.email && "chat__receiver"}`}>
-          {message.senderEmail !== user.email && ( <span className = "chat__name"> {message.name}</span>)}
-              {message.message} 
-            <span className = "chat__timestamp">{new Date(message.timeStamp).toLocaleString()}</span>
-          </p>
-        ))}
-      </div>
-      <div className="chat__footer">
-        <InsertEmoticon/>
-        <form>
-          <input value = {input} onChange = {e => setInput(e.target.value)} placeholder = "Type a message" type = "text"/>
-          <button onClick = {sendMessage} type = "submit">
-            Send a message
-          </button>  
-        </form>  
-        <MicIcon/>
-      </div>
-    </div>
-  )
+    )
+  }
+  else
+    return (null);
 }
 
 export default Chat
