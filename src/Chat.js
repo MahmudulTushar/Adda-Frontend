@@ -35,7 +35,6 @@ function Chat() {
   const leaveRoomEvent = "leaveRoom"
   const sendMessageToRoomEvent = 'sendMessageToRoom'
   const receivedMessageEvent = 'receivedMsg'
-  console.log(process.env.REACT_APP_SOCKET_SERVER_URL)
   
   socketIo.on("connect_error", (err) => {
     console.log(`connect_error due to ${err.message}`);
