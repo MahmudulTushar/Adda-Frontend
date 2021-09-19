@@ -13,7 +13,9 @@ import CustomDialog from './CustomDialog';
 import {toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+const socketIo = require('socket.io-client')(process.env.REACT_APP_SOCKET_SERVER_URL);
 toast.configure();
+
 function Chat() {
   const chatBody = useRef(null);
   const [input, setInput] = useState("");
@@ -23,10 +25,53 @@ function Chat() {
   const [{user}, dispatch] = useStateValue();
   const [openDialogForSendJoinReq, setOpenialogForSendJoinReq] = useState(false);
   const [email, setEmail] = useState("");
+  const [isConnectedToTheServer, setConnection] = useState(false);
+  const [placeHolder, setPlaceHolder] = useState("false");
   const [seed, setSeed] = useState("");
   const [isValidChatRoom, setValidChatRoom] = useState(false);
   const pattern = new RegExp(/^(("[\w-\s]+")|([\w-]+(?:\.[\w-]+)*)|("[\w-\s]+")([\w-]+(?:\.[\w-]+)*))(@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-z]{2,6}(?:\.[a-z]{2})?)$)|(@\[?((25[0-5]\.|2[0-4][0-9]\.|1[0-9]{2}\.|[0-9]{1,2}\.))((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[0-9]{1,2})\.){2}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[0-9]{1,2})\]?$)/i);
   let emailIsValid = true;
+  const joinRoomEvent = 'joinRoom'
+  const leaveRoomEvent = "leaveRoom"
+  const sendMessageToRoomEvent = 'sendMessageToRoom'
+  const receivedMessageEvent = 'receivedMsg'
+  console.log(process.env.REACT_APP_SOCKET_SERVER_URL)
+  
+  socketIo.on("connect_error", (err) => {
+    console.log(`connect_error due to ${err.message}`);
+    setConnection(false)
+    setPlaceHolder("Connecting to server...")
+  },[isConnectedToTheServer]);
+
+  socketIo.on("connect", () => {
+    GetMessagesByRoomId();
+    setConnection(true)
+    setPlaceHolder("Type a message")
+  },[isConnectedToTheServer]);
+
+  useEffect(() => {
+    socketIo.emit(joinRoomEvent , roomId)
+    GetMessagesByRoomId();
+    return () => {
+      socketIo.emit(leaveRoomEvent , roomId)
+    }
+  }, [roomId]);
+
+  const GetMessagesByRoomId = () => {
+     if(roomId){
+         axios.get(`/messages/${roomId}`)
+        .then(response => {
+          if (messages != response.data){
+            setMessages(response.data);
+          }
+        })
+        .catch(err =>{
+        })
+        return () =>{
+        }
+     } 
+  }
+
   useEffect(() => {
     setSeed(Math.floor(Math.random() * 5000));        
   }, [roomId]);
@@ -89,33 +134,18 @@ function Chat() {
   };
 
   useEffect(()=>{
-    axios.get(`/messages/${roomId}`)
-    .then(response => {
-      setMessages(response.data);
-    })
-    .catch(err =>{
-    })
-    return () =>{
-    }
-  }, [roomId])
-
-  useEffect(()=>{
     // To set the Chat body at the current bottom
     if (isValidChatRoom)
       chatBody.current.scrollTop = chatBody.current.scrollHeight;
-    
-    const channel = Pusher.subscribe('messages');
-    channel.bind('insert', function(newMessage) {
-    if (newMessage.roomId === roomId){
-
-      if (newMessage.senderEmail !== user.email) // Do not add your own message to the message array because it is already adding at the sendMessage function
+  
+    socketIo.on(receivedMessageEvent, (newMessage) => {
+      console.log("New message:" + newMessage)
+      if (newMessage.senderEmail != user.email){
         setMessages([...messages, newMessage]);
-    }
-
+      }
     });
+    
     return () =>{
-      channel.unbind_all();
-      channel.unsubscribe();
     }
   },[messages, roomId, isValidChatRoom, user.email])
 
@@ -129,18 +159,13 @@ function Chat() {
       senderEmail: user.email 
     }
     setMessages([...messages, data]);
-    axios.post('/messages/new', data)
-    .then(response => {
-      
-    })
-    .catch(err=>{
-
-    })
+    socketIo.emit(sendMessageToRoomEvent, data)
     setInput('');
   }
   useEffect(() => {
     if (roomId)
     {
+
       let userArray = [];
       axios.get(`/rooms/${roomId}`)
       .then(response => {
@@ -183,6 +208,7 @@ function Chat() {
               {new Date(messages[messages.length - 1]?.timeStamp)?.toLocaleString()}
             </p>)
             }
+            {isConnectedToTheServer == false && (<p>Connecting to the server...</p>)}
           </div>
           <div className="chat__headerRight">
             <Tooltip title={<h2>Send join request</h2>}> 
@@ -223,7 +249,7 @@ function Chat() {
         <div className="chat__footer">
           <InsertEmoticon/>
           <form>
-            <input value = {input} onChange = {e => setInput(e.target.value)} placeholder = "Type a message" type = "text"/>
+            <input value = {input} onChange = {e => setInput(e.target.value)} placeholder = {placeHolder} type = "text" disabled={!isConnectedToTheServer}/>
             <button onClick = {sendMessage} type = "submit">
               Send a message
             </button>  
